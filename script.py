@@ -10,7 +10,7 @@ from datetime import datetime
 
 URL = "https://lk.ugatu.su/raspisanie/"
 
-TOKEN = "1499244511:AAG6sFp97vNneTQ8jOSakSBTid8BhhVq7rI"
+TOKEN = os.environ.get("TOKEN")
 
 keywords = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье", "сегодня", "завтра", "послезавтра", "неделя"]
 
