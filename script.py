@@ -51,6 +51,8 @@ def help_message(message):
 
 @bot.message_handler(["г"])
 def group_message(message):
+    print(f"username: {message.from_user.username}, first_name: {message.from_user.first_name}, user_id: {str(message.from_user.id)}, user_message: {message.text}")
+    
     message_text = message.text[3:].lower()
     user_id = str(message.from_user.id)
     if message_text:
@@ -70,6 +72,8 @@ def group_message(message):
             
 @bot.message_handler(content_types = ["text"])
 def rasp_message(message):
+    print(f"username: {message.from_user.username}, first_name: {message.from_user.first_name}, user_id: {str(message.from_user.id)}, user_message: {message.text}")
+    
     message_text = pop_duplicates(message.text.lower().split())
     user_id = str(message.from_user.id)
     
