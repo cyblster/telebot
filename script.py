@@ -10,7 +10,7 @@ from datetime import datetime
 
 URL = "https://lk.ugatu.su/raspisanie/"
 
-TOKEN = os.environ.get("TOKEN")
+TOKEN = "1499244511:AAG6sFp97vNneTQ8jOSakSBTid8BhhVq7rI"
 
 keywords = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье", "сегодня", "завтра", "послезавтра", "неделя"]
 
@@ -45,9 +45,9 @@ def send_message(chat_id, group_name, date, time, subjects):
 
 @bot.message_handler(["start"])
 def help_message(message):
-    bot.send_message(message.chat.id, "Список команд\n===\n" +
-                     "*/г* _[группа]_\nДобавить/изменить группу\n=\n" +
-                     "*/р* _[день]/завтра/сегодня/неделя_\nРасписание на день/неделю", parse_mode="Markdown")
+    bot.send_message(message.chat.id, "*Список команд:\n/г* _[группа]_\nДобавить/изменить группу\n\n" +
+                     "*Поиск расписания:*\nНапиши день недели, сегодня/завтра/послезавтра или неделя.\n" +
+                     "Возможны комбинации через пробел.", parse_mode="Markdown")
 
 @bot.message_handler(["г"])
 def group_message(message):
@@ -68,9 +68,9 @@ def group_message(message):
         else:
             bot.send_message(message.chat.id, f"Ваша группа не установлена\n*/г* _[группа]_\nДобавить/изменить группу", parse_mode="Markdown")
             
-@bot.message_handler(["р"])
+@bot.message_handler(content_types = ["text"])
 def rasp_message(message):
-    message_text = pop_duplicates(message.text[3:].lower().split())
+    message_text = pop_duplicates(message.text.lower().split())
     user_id = str(message.from_user.id)
     
     if user_id in database:
