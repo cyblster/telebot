@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 import requests
 import telebot
 import telebot_calendar
@@ -13,7 +14,7 @@ from pytz import timezone
 from json import dumps, loads
 
 URL = "https://lk.ugatu.su/raspisanie/"
-TOKEN = "1425503807:AAF23cvzBa0ym-Oyxai1UfvRjobp_x3Vx9g"
+TOKEN = os.environ("TOKEN")
 
 TIMEZONE = timezone('Asia/Yekaterinburg')
 
