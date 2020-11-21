@@ -121,10 +121,8 @@ def get_schedule_by_date(date, group_id):
         return result
     
     time = [tr.find("td").get_text(separator="\n").split("\n")[1] for tr in post_page_soup.tbody.find_all("tr")[1:]]
-<<<<<<< HEAD
-=======
+    
     date = f"{post_page_soup.tbody.find('tr').find('td').get_text()}, {int(date.split('.')[0])} {['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'][int(date.split('.')[1]) - 1]}"
->>>>>>> b77cd69553f1f3f89bdea663ee05888e9e65937f
     subjects = ["\n".join(el[:4] + [" "] + el[4:]).strip(" ").strip("\n") for el in [el.split("\n") for el in [tr.find_all("td")[1].get_text(separator="\n") for tr in post_page_soup.tbody.find_all("tr")[1:]]]]
     
     result = "\n".join([f"*[{index + 1} пара] ({time[index]}):*\n{subjects[index]}\n" for index in range(len(subjects)) if subjects[index]])
