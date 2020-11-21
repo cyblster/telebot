@@ -14,8 +14,8 @@ from pytz import timezone
 from json import dumps, loads
 
 URL = "https://lk.ugatu.su/raspisanie/"
-TOKEN = os.environ.get("TOKEN")
-
+#TOKEN = os.environ.get("TOKEN")
+TOKEN = "1425503807:AAFm6sz08GkCH6SCiLggKMMwsdlr-lBjsWw"
 TIMEZONE = timezone('Asia/Yekaterinburg')
 
 START_MESSAGE = "@{}, для дальнейшей работы напиши, пожалуйста, имя своей группы. Можешь сменить её в любой момент, написав имя группы ещё раз."
@@ -53,7 +53,8 @@ def get_schedule_by_day(day_index, group_id, type_id):
     csrftoken = page_cookies["csrftoken"]
     week = page_soup.p.font.text
     next_week_flag = 0
-    if day_index <= datetime.now(tz=TIMEZONE).weekday() and type_id:
+    if day_index <= datetime.now(tz=TIMEZONE).weekday() and type_id or day_index > 6:
+        day_index %= 7
         week = f"{int(week) + 1}"
         next_week_flag = 1
     sem = "14"
