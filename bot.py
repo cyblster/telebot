@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import os
 import requests
 import telebot
 import telebot_calendar
@@ -14,7 +13,7 @@ from pytz import timezone
 from json import dumps, loads
 
 URL = "https://lk.ugatu.su/raspisanie/"
-TOKEN = os.environ.get("TOKEN")
+TOKEN = "1425503807:AAF23cvzBa0ym-Oyxai1UfvRjobp_x3Vx9g"
 
 TIMEZONE = timezone('Asia/Yekaterinburg')
 
@@ -121,8 +120,6 @@ def get_schedule_by_date(date, group_id):
         return result
     
     time = [tr.find("td").get_text(separator="\n").split("\n")[1] for tr in post_page_soup.tbody.find_all("tr")[1:]]
-    
-    date = f"{post_page_soup.tbody.find('tr').find('td').get_text()}, {int(date.split('.')[0])} {['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'][int(date.split('.')[1]) - 1]}"
     subjects = ["\n".join(el[:4] + [" "] + el[4:]).strip(" ").strip("\n") for el in [el.split("\n") for el in [tr.find_all("td")[1].get_text(separator="\n") for tr in post_page_soup.tbody.find_all("tr")[1:]]]]
     
     result = "\n".join([f"*[{index + 1} пара] ({time[index]}):*\n{subjects[index]}\n" for index in range(len(subjects)) if subjects[index]])
