@@ -14,7 +14,7 @@ from pytz import timezone
 from json import dumps, loads
 
 URL = "https://lk.ugatu.su/raspisanie/"
-TOKEN = os.environ("TOKEN")
+TOKEN = os.environ.get("TOKEN")
 
 TIMEZONE = timezone('Asia/Yekaterinburg')
 
