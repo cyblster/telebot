@@ -109,7 +109,7 @@ def get_schedule_by_date(date, group_id):
     post_page = requests.post(URL, cookies=page_cookies, headers=page_headers, data=page_data)
     post_page_soup = BeautifulSoup(post_page.text, "lxml")
     
-    if post_page_soup.find(id="id_group") == None:
+    if post_page_soup.find(id="id_group") == None or int(week) < -1:
         return OUTDATE_MESSAGE
     
     group_name = post_page_soup.find(id="id_group").find(value=group_id).get_text()
