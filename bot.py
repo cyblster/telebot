@@ -14,8 +14,7 @@ from pytz import timezone
 from json import dumps, loads
 
 URL = "https://lk.ugatu.su/raspisanie/"
-#TOKEN = os.environ.get("TOKEN")
-TOKEN = "1433783272:AAHQLEC382hmt_Q0XOmytTkbIVuLUdoQ0jM"
+TOKEN = os.environ.get("TOKEN")
 TIMEZONE = timezone('Asia/Yekaterinburg')
 
 START_MESSAGE = "@{}, для дальнейшей работы напиши, пожалуйста, имя своей группы. Можешь сменить её в любой момент, написав имя группы ещё раз."
