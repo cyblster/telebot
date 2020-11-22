@@ -29,6 +29,7 @@ KEYBOARD.row("Сегодня", "Завтра")
 KEYBOARD.row("Понедельник", "Вторник", "Среда")
 KEYBOARD.row("Четверг", "Пятница", "Суббота")
 KEYBOARD.row("Дата")
+KEYBOARD.row("Экзамены")
 
 CALENDAR = CallbackData("calendar", "action", "year", "month", "day")
 
@@ -94,7 +95,7 @@ def get_schedule_by_day(day_index, group_id, type_id):
 def get_schedule_by_date(date, group_id):
     csrftoken = page_cookies["csrftoken"]
     week = f"{(int((date - datetime(2020, 9, 1)).days) + int(datetime(2020, 9, 1).day)) // 7 + 1}"
-    sem = "14"
+    sem = "11"
     
     page_data = {"csrfmiddlewaretoken": csrftoken,
             "faculty": "",
@@ -103,6 +104,25 @@ def get_schedule_by_date(date, group_id):
             "ScheduleType": "На дату",
             "week": "",
             "date": date.strftime('%d.%m.%Y'),
+            "sem": sem,
+            "view": "ПОКАЗАТЬ"}
+    
+    post_page = requests.post(URL, cookies=page_cookies, headers=page_headers, data=page_data)
+    post_page_soup = BeautifulSoup(post_page.text, "lxml")    
+    
+    print(post_page_soup)
+    
+def get_exams(group_id):
+    csrftoken = page_cookies["csrftoken"]
+    sem = "14"
+    
+    page_data = {"csrfmiddlewaretoken": csrftoken,
+            "faculty": "",
+            "klass": "",
+            "group": group_id,
+            "ScheduleType": "Экзамены",
+            "week": "",
+            "date": "",
             "sem": sem,
             "view": "ПОКАЗАТЬ"}
     
@@ -151,7 +171,7 @@ def handle_text(message):
         database.update({f"{message.from_user.id}": group_name.parent["value"]})
         with open("database.txt", "w") as file:
             file.write(dumps(database))
-        bot.send_message(message.chat.id, GROUP_UPDATE_MESSAGE.format(group_name), parse_mode="Markdown", reply_markup=KEYBOARD)
+        bot.send_message(message.chat.id, GROUP_UPDATE_MESSAGE.format(group_name), parse_mode="Markdown")
     elif f"{message.from_user.id}" in database:
         if message_text in ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"]:
             day_index = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"].index(message_text)
@@ -169,7 +189,7 @@ def handle_text(message):
                                                                month=date_now.month)
             bot.send_message(message.chat.id, DATE_MESSAGE, reply_markup=inline_calendar, parse_mode="Markdown")
     else:
-        bot.send_message(message.chat.id, NOGROUP_MESSAGE.format(), parse_mode="Markdown", reply_markup=KEYBOARD)    
+        bot.send_message(message.chat.id, NOGROUP_MESSAGE.format(), parse_mode="Markdown")    
 
 if __name__ == "__main__": 
     bot.polling(none_stop=False, timeout=30)
