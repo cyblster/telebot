@@ -135,7 +135,7 @@ def get_schedule_by_date(date, group_id):
 
 def get_exams(group_id):
     csrftoken = page_cookies["csrftoken"]
-    sem = "14"
+    sem = "11"
     
     page_data = {"csrfmiddlewaretoken": csrftoken,
             "faculty": "",
@@ -159,7 +159,7 @@ def get_exams(group_id):
     result = [el.split("\n") for el in [tr.get_text(separator = "\n") for tr in post_page_soup.tbody.find_all("tr")[1:] if "----" not in [td.get_text(separator = "\n") for td in tr.find_all("td")]]]
     time, date, name, caf, type, prepod = list(map(list, zip(*result)))
     
-    result = "".join([f"*{date[index]}*\n[[{type[index].upper()}]] ({time[index]})\n{name[index]}\n{caf[index]}\n{prepod[index]}\n\n" for index in range(len(date))])
+    result = "".join([f"*{date[index]}\n[{type[index]}] ({time[index]}):*\n{name[index]}\n{caf[index]}\n{prepod[index]}\n\n" for index in range(len(date))])
     
     if result:
         result = f"*[{group_name}]\nЭкзамены*\n\n{result}"
