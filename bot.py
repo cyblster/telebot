@@ -108,25 +108,6 @@ def get_schedule_by_date(date, group_id):
             "view": "ПОКАЗАТЬ"}
     
     post_page = requests.post(URL, cookies=page_cookies, headers=page_headers, data=page_data)
-    post_page_soup = BeautifulSoup(post_page.text, "lxml")    
-    
-    print(post_page_soup)
-    
-def get_exams(group_id):
-    csrftoken = page_cookies["csrftoken"]
-    sem = "14"
-    
-    page_data = {"csrfmiddlewaretoken": csrftoken,
-            "faculty": "",
-            "klass": "",
-            "group": group_id,
-            "ScheduleType": "Экзамены",
-            "week": "",
-            "date": "",
-            "sem": sem,
-            "view": "ПОКАЗАТЬ"}
-    
-    post_page = requests.post(URL, cookies=page_cookies, headers=page_headers, data=page_data)
     post_page_soup = BeautifulSoup(post_page.text, "lxml")
     
     if post_page_soup.find(id="id_group") == None or int(week) < -1:
@@ -151,6 +132,25 @@ def get_exams(group_id):
         result = f"*[{group_name}]\n{week} - я учебная неделя\n{date}*\n\n{NOSCHEDULE_MESSAGE}"
     
     return result
+
+def get_exams(group_id):
+    csrftoken = page_cookies["csrftoken"]
+    sem = "14"
+    
+    page_data = {"csrfmiddlewaretoken": csrftoken,
+            "faculty": "",
+            "klass": "",
+            "group": group_id,
+            "ScheduleType": "Экзамены",
+            "week": "",
+            "date": "",
+            "sem": sem,
+            "view": "ПОКАЗАТЬ"}
+    
+    post_page = requests.post(URL, cookies=page_cookies, headers=page_headers, data=page_data)
+    post_page_soup = BeautifulSoup(post_page.text, "lxml")
+    
+    print(post_page_soup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(CALENDAR.prefix))
 def callback_inline(call: CallbackQuery):
@@ -188,6 +188,8 @@ def handle_text(message):
                                                                year=date_now.year,
                                                                month=date_now.month)
             bot.send_message(message.chat.id, DATE_MESSAGE, reply_markup=inline_calendar, parse_mode="Markdown")
+        elif message_text == "экзамены":
+            bot.send_message(message.chat.id, get_exams(database[f"{message.from_user.id}"]), parse_mode="Markdown")
     else:
         bot.send_message(message.chat.id, NOGROUP_MESSAGE.format(), parse_mode="Markdown")    
 
