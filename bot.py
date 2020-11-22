@@ -14,7 +14,8 @@ from pytz import timezone
 from json import dumps, loads
 
 URL = "https://lk.ugatu.su/raspisanie/"
-TOKEN = os.environ.get("TOKEN")
+#TOKEN = os.environ.get("TOKEN")
+TOKEN = "1433783272:AAHQLEC382hmt_Q0XOmytTkbIVuLUdoQ0jM"
 TIMEZONE = timezone('Asia/Yekaterinburg')
 
 START_MESSAGE = "@{}, для дальнейшей работы напиши, пожалуйста, имя своей группы. Можешь сменить её в любой момент, написав имя группы ещё раз."
@@ -95,7 +96,7 @@ def get_schedule_by_day(day_index, group_id, type_id):
 def get_schedule_by_date(date, group_id):
     csrftoken = page_cookies["csrftoken"]
     week = f"{(int((date - datetime(2020, 9, 1)).days) + int(datetime(2020, 9, 1).day)) // 7 + 1}"
-    sem = "11"
+    sem = "14"
     
     page_data = {"csrfmiddlewaretoken": csrftoken,
             "faculty": "",
@@ -150,7 +151,23 @@ def get_exams(group_id):
     post_page = requests.post(URL, cookies=page_cookies, headers=page_headers, data=page_data)
     post_page_soup = BeautifulSoup(post_page.text, "lxml")
     
-    print(post_page_soup)
+    group_name = post_page_soup.find(id="id_group").find(value=group_id).get_text()
+    
+    if post_page_soup.tbody == None:
+        result = f"*[{group_name}]\nЭкзамены*\n\n{NOSCHEDULE_MESSAGE}"
+        return result
+    
+    result = [el.split("\n") for el in [tr.get_text(separator = "\n") for tr in post_page_soup.tbody.find_all("tr")[1:] if "----" not in [td.get_text(separator = "\n") for td in tr.find_all("td")]]]
+    time, date, name, caf, type, prepod = list(map(list, zip(*result)))
+    
+    result = "".join([f"*{date[index]}*\n[[{type[index].upper()}]] ({time[index]})\n{name[index]}\n{caf[index]}\n{prepod[index]}\n\n" for index in range(len(date))])
+    
+    if result:
+        result = f"*[{group_name}]\nЭкзамены*\n\n{result}"
+    else:
+        result = f"*[{group_name}]\nЭкзамены*\n\n{NOSCHEDULE_MESSAGE}"
+    
+    return result
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(CALENDAR.prefix))
 def callback_inline(call: CallbackQuery):
