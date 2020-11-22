@@ -135,7 +135,7 @@ def get_schedule_by_date(date, group_id):
 
 def get_exams(group_id):
     csrftoken = page_cookies["csrftoken"]
-    sem = "11"
+    sem = "14"
     
     page_data = {"csrfmiddlewaretoken": csrftoken,
             "faculty": "",
