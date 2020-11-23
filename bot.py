@@ -15,7 +15,8 @@ page_headers = {"Referer": URL}
 page_soup = BeautifulSoup(page.text, "lxml")
 
 
-TOKEN = os.environ.get("TOKEN")
+#TOKEN = os.environ.get("TOKEN")
+TOKEN = "1475784127:AAF6iAO61ax9zYc80cTPIq08G1iwbNfIUL0"
 TIMEZONE = timezone("Asia/Yekaterinburg")
 
 WEEKDAYS = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье")
@@ -120,29 +121,33 @@ def message_start(message):
 
 @bot.message_handler(content_types=["text"])
 def message_any(message):
+    print(f"ID: {message.from_user.id}, USERNAME: {message.from_user.username}, FNAME: {message.from_user.first_name}, MESSAGE: {message.text}")
     if message.text.upper() in GROUPS:
         database.update({f"{message.from_user.id}": [GROUPS[message.text.upper()], message.text.upper()]})
         with open("database.txt", "w") as file:
             file.write(dumps(database))
         bot.send_message(message.chat.id, GROUP_UPDATE_MESSAGE.format(database[f"{message.from_user.id}"][1]), parse_mode="Markdown")
     else:
-        date_now = datetime.now(tz=TIMEZONE)
-        if message.text.lower() in WEEKDAYS:
-            weekday = WEEKDAYS.index(message.text.lower())
-            if date_now.weekday() >= weekday:
-                weekday += 7
-            date = date_now + timedelta(weekday - date_now.weekday())
-            bot.send_message(message.chat.id, get_schedule_by_date(date, database[f"{message.from_user.id}"]), parse_mode="Markdown")
-        elif message.text.lower() == "сегодня":
-            date = date_now + timedelta(0)
-            bot.send_message(message.chat.id, get_schedule_by_date(date, database[f"{message.from_user.id}"]), parse_mode="Markdown")
-        elif message.text.lower() == "завтра":
-            date = date_now + timedelta(1)
-            bot.send_message(message.chat.id, get_schedule_by_date(date, database[f"{message.from_user.id}"]), parse_mode="Markdown")
-        elif message.text.lower() == "дата":
-            calendar = tc.create_calendar(name=CALENDAR.prefix, year=date_now.year, month=date_now.month)
-            bot.send_message(message.chat.id, DATE_MESSAGE, reply_markup=calendar, parse_mode="Markdown")
-        elif message.text.lower() == "экзамены":
-            bot.send_message(message.chat.id, get_schedule_exams(database[f"{message.from_user.id}"]), parse_mode="Markdown")
+        if f"{message.from_user.id}" in database:
+            date_now = datetime.now(tz=TIMEZONE)
+            if message.text.lower() in WEEKDAYS:
+                weekday = WEEKDAYS.index(message.text.lower())
+                if date_now.weekday() >= weekday:
+                    weekday += 7
+                date = date_now + timedelta(weekday - date_now.weekday())
+                bot.send_message(message.chat.id, get_schedule_by_date(date, database[f"{message.from_user.id}"]), parse_mode="Markdown")
+            elif message.text.lower() == "сегодня":
+                date = date_now + timedelta(0)
+                bot.send_message(message.chat.id, get_schedule_by_date(date, database[f"{message.from_user.id}"]), parse_mode="Markdown")
+            elif message.text.lower() == "завтра":
+                date = date_now + timedelta(1)
+                bot.send_message(message.chat.id, get_schedule_by_date(date, database[f"{message.from_user.id}"]), parse_mode="Markdown")
+            elif message.text.lower() == "дата":
+                calendar = tc.create_calendar(name=CALENDAR.prefix, year=date_now.year, month=date_now.month)
+                bot.send_message(message.chat.id, DATE_MESSAGE, reply_markup=calendar, parse_mode="Markdown")
+            elif message.text.lower() == "экзамены":
+                bot.send_message(message.chat.id, get_schedule_exams(database[f"{message.from_user.id}"]), parse_mode="Markdown")
+        else:
+            bot.send_message(message.chat.id, NOGROUP_MESSAGE, parse_mode="Markdown")
 
 bot.polling()
