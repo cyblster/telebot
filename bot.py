@@ -1,21 +1,28 @@
-# -*- coding: utf-8 -*-
-
 import os
 import requests
-import telebot
-import telebot_calendar
+import telebot_calendar as tc
 
-from telebot_calendar import CallbackData
-from telebot.types import ReplyKeyboardRemove, CallbackQuery
-
+from telebot import TeleBot, types
 from bs4 import BeautifulSoup
-from datetime import datetime, date
+from datetime import datetime, timedelta
 from pytz import timezone
 from json import dumps, loads
 
 URL = "https://lk.ugatu.su/raspisanie/"
+page = requests.get(URL)
+page_cookies = page.cookies
+page_headers = {"Referer": URL}
+page_soup = BeautifulSoup(page.text, "lxml")
+
+
 TOKEN = os.environ.get("TOKEN")
-TIMEZONE = timezone('Asia/Yekaterinburg')
+TIMEZONE = timezone("Asia/Yekaterinburg")
+
+WEEKDAYS = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье")
+MONTHS = ("января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря")
+SEM = "14"
+
+GROUPS = {group.get_text():group.attrs["value"] for group in page_soup.find(id="id_group").find_all()[1:]}
 
 START_MESSAGE = "@{}, для дальнейшей работы напиши, пожалуйста, имя своей группы. Можешь сменить её в любой момент, написав имя группы ещё раз."
 GROUP_UPDATE_MESSAGE = "Группа изменена на *{}*"
@@ -23,15 +30,16 @@ NOGROUP_MESSAGE = "Для начала напиши, пожалуйста, им�
 NOSCHEDULE_MESSAGE = "Расписание отсутствует"
 DATE_MESSAGE = "Пожалуйста, выбери дату"
 OUTDATE_MESSAGE = "Выбрана неверная дата."
+RESULT_DATE_MESSAGE = "*[{}]\n{} - я учебная неделя\n{} {} ({})*\n\n{}"
+RESULT_EXAMS_MESSAGE = "*[{}]\n{}\n{}*\n\n{}"
 
-KEYBOARD = telebot.types.ReplyKeyboardMarkup()
+KEYBOARD = types.ReplyKeyboardMarkup()
 KEYBOARD.row("Сегодня", "Завтра")
 KEYBOARD.row("Понедельник", "Вторник", "Среда")
 KEYBOARD.row("Четверг", "Пятница", "Суббота")
-KEYBOARD.row("Дата")
-KEYBOARD.row("Экзамены")
+KEYBOARD.row("Дата", "Экзамены")
 
-CALENDAR = CallbackData("calendar", "action", "year", "month", "day")
+CALENDAR = tc.CallbackData("calendar", "action", "year", "month", "day")
 
 database = {}
 with open("database.txt", "r") as file:
@@ -40,174 +48,101 @@ with open("database.txt", "r") as file:
     except:
         pass
 
+bot = TeleBot(TOKEN)
 
-bot = telebot.TeleBot(TOKEN)
+def get_schedule_by_date(date, group):
+    week = ((date - datetime(2020, 9, 1, tzinfo=TIMEZONE) + timedelta(datetime(2020, 9, 1, tzinfo=TIMEZONE).weekday())).days) // 7 + 1
+    weekday, day, month = WEEKDAYS[date.weekday()].capitalize(), date.strftime("%d"), MONTHS[date.month - 1].capitalize()
 
-client = requests.session()
-page = client.get(URL)
-page_cookies = page.cookies
-page_headers = {"Referer": URL}
-page_soup = BeautifulSoup(page.text, "lxml")
-
-def get_schedule_by_day(day_index, group_id, type_id):
-    csrftoken = page_cookies["csrftoken"]
-    week = page_soup.p.font.text
-    next_week_flag = 0
-    if day_index <= datetime.now(tz=TIMEZONE).weekday() and type_id or day_index > 6:
-        day_index %= 7
-        week = f"{int(week) + 1}"
-        next_week_flag = 1
-    sem = "14"
-    
-    page_data = {"csrfmiddlewaretoken": csrftoken,
-            "faculty": "",
-            "klass": "",
-            "group": group_id,
-            "ScheduleType": "За неделю",
-            "week": week,
-            "date": "",
-            "sem": sem,
-            "view": "ПОКАЗАТЬ"}
-    
-    post_page = requests.post(URL, cookies=page_cookies, headers=page_headers, data=page_data)
-    post_page_soup = BeautifulSoup(post_page.text, "lxml")
-    
-    group_name = post_page_soup.find(id="id_group").find(value=group_id).get_text()
-    
-    date = f"{['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'][day_index]}, {int(datetime.now(tz=TIMEZONE).day) + day_index - datetime.now(tz=TIMEZONE).weekday() + 7 * next_week_flag} {['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'][int(datetime.now(tz=TIMEZONE).month) - 1]}"
-    
-    if post_page_soup.tbody == None or day_index == 6:
-        result = f"*[{group_name}]\n{week} - я учебная неделя\n{date}*\n\n{NOSCHEDULE_MESSAGE}"
-        return result
-    
-    time = [td.get_text(separator="\n").split("\n")[1] for td in [tr.find_all("td")[0] for tr in post_page_soup.tbody.find_all("tr")]]
-    subjects = ["\n".join(el[:4] + [" "] + el[4:]).strip(" ").strip("\n") for el in [el.split("\n") for el in [td.get_text(separator = "\n") for td in [tr.find_all("td")[day_index + 1] for tr in post_page_soup.tbody.find_all("tr")]]]]
-    
-    result = "\n".join([f"*[{index + 1} пара] ({time[index]}):*\n{subjects[index]}\n" for index in range(len(subjects)) if subjects[index]])
-    
-    if result:
-        result = f"*[{group_name}]\n{week} - я учебная неделя\n{date}*\n\n{result}"
-    else:
-        result = f"*[{group_name}]\n{week} - я учебная неделя\n{date}*\n\n{NOSCHEDULE_MESSAGE}"
-    
-    return result
-
-def get_schedule_by_date(date, group_id):
-    csrftoken = page_cookies["csrftoken"]
-    week = f"{(int((date - datetime(2020, 9, 1)).days) + int(datetime(2020, 9, 1).day)) // 7 + 1}"
-    sem = "14"
-    
-    page_data = {"csrfmiddlewaretoken": csrftoken,
-            "faculty": "",
-            "klass": "",
-            "group": group_id,
-            "ScheduleType": "На дату",
-            "week": "",
-            "date": date.strftime('%d.%m.%Y'),
-            "sem": sem,
-            "view": "ПОКАЗАТЬ"}
-    
-    post_page = requests.post(URL, cookies=page_cookies, headers=page_headers, data=page_data)
-    post_page_soup = BeautifulSoup(post_page.text, "lxml")
-    
-    if post_page_soup.find(id="id_group") == None or int(week) < -1:
+    if  week > 20 or week < -1:
         return OUTDATE_MESSAGE
-    
-    group_name = post_page_soup.find(id="id_group").find(value=group_id).get_text()
-    
-    date = f"{['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'][date.weekday()]}, {date.day} {['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'][int(date.month) - 1]}"
-    
+
+    page_data = {"csrfmiddlewaretoken": page_cookies["csrftoken"],
+                "faculty": "",
+                "klass": "",
+                "group": group[0],
+                "ScheduleType": "На дату",
+                "week": "",
+                "date": date.strftime('%d.%m.%Y'),
+                "sem": "",
+                "view": "ПОКАЗАТЬ"}
+
+    post_page = requests.post(URL, cookies=page_cookies, headers=page_headers, data=page_data)
+    post_page_soup = BeautifulSoup(post_page.text, "lxml")
+
     if post_page_soup.tbody == None:
-        result = f"*[{group_name}]\n{week} - я учебная неделя\n{date}*\n\n{NOSCHEDULE_MESSAGE}"
-        return result
-    
-    time = [tr.find("td").get_text(separator="\n").split("\n")[1] for tr in post_page_soup.tbody.find_all("tr")[1:]]
+        return RESULT_DATE_MESSAGE.format(group[1], week, weekday, day, month, NOSCHEDULE_MESSAGE)
+
+    time = [time.get_text() for time in post_page_soup.tbody.find_all(class_="font-time")]
     subjects = ["\n".join(el[:4] + [" "] + el[4:]).strip(" ").strip("\n") for el in [el.split("\n") for el in [tr.find_all("td")[1].get_text(separator="\n") for tr in post_page_soup.tbody.find_all("tr")[1:]]]]
     
-    result = "\n".join([f"*[{index + 1} пара] ({time[index]}):*\n{subjects[index]}\n" for index in range(len(subjects)) if subjects[index]])
+    schedule = "\n".join([f"*[{index + 1} пара] ({time[index]}):*\n{subjects[index]}\n" for index in range(len(subjects)) if subjects[index]])
     
-    if result:
-        result = f"*[{group_name}]\n{week} - я учебная неделя\n{date}*\n\n{result}"
-    else:
-        result = f"*[{group_name}]\n{week} - я учебная неделя\n{date}*\n\n{NOSCHEDULE_MESSAGE}"
-    
-    return result
+    return RESULT_DATE_MESSAGE.format(group[1], week, day, month, weekday, schedule)
 
-def get_exams(group_id):
-    csrftoken = page_cookies["csrftoken"]
-    sem = "14"
-    
-    page_data = {"csrfmiddlewaretoken": csrftoken,
-            "faculty": "",
-            "klass": "",
-            "group": group_id,
-            "ScheduleType": "Экзамены",
-            "week": "",
-            "date": "",
-            "sem": sem,
-            "view": "ПОКАЗАТЬ"}
+def get_schedule_exams(group):
+    page_data = {"csrfmiddlewaretoken": page_cookies["csrftoken"],
+                "faculty": "",
+                "klass": "",
+                "group": group[0],
+                "ScheduleType": "Экзамены",
+                "week": "",
+                "date": "",
+                "sem": SEM,
+                "view": "ПОКАЗАТЬ"}
     
     post_page = requests.post(URL, cookies=page_cookies, headers=page_headers, data=page_data)
     post_page_soup = BeautifulSoup(post_page.text, "lxml")
-    
-    group_name = post_page_soup.find(id="id_group").find(value=group_id).get_text()
-    
+
+    sem = post_page_soup.find(id="SemestrSchedule").find(value=SEM).get_text()
+
     if post_page_soup.tbody == None:
-        result = f"*[{group_name}]\nЭкзамены*\n\n{NOSCHEDULE_MESSAGE}"
-        return result
-    
+        return RESULT_EXAMS_MESSAGE.format(group[1], "Экзамены", sem, NOSCHEDULE_MESSAGE)
+
     result = [el.split("\n") for el in [tr.get_text(separator = "\n") for tr in post_page_soup.tbody.find_all("tr")[1:] if "----" not in [td.get_text(separator = "\n") for td in tr.find_all("td")]]]
     time, date, name, caf, type, prepod = list(map(list, zip(*result)))
-    
+
     result = "".join([f"*{date[index]}\n[{type[index]}] ({time[index]}):*\n{name[index]}\n{caf[index]}\n{prepod[index]}\n\n" for index in range(len(date))])
     
-    if result:
-        result = f"*[{group_name}]\nЭкзамены*\n\n{result}"
-    else:
-        result = f"*[{group_name}]\nЭкзамены*\n\n{NOSCHEDULE_MESSAGE}"
-    
-    return result
+    return RESULT_EXAMS_MESSAGE.format(group[1], "Экзамены", sem, result)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(CALENDAR.prefix))
-def callback_inline(call: CallbackQuery):
+def callback_inline(call: tc.CallbackQuery):
     name, action, year, month, day = call.data.split(CALENDAR.sep)
-    date = telebot_calendar.calendar_query_handler(bot=bot, call=call, name=name, action=action, year=year, month=month, day=day)
+    date = tc.calendar_query_handler(bot=bot, call=call, name=name, action=action, year=year, month=month, day=day)
     if action == "DAY":
-            bot.send_message(call.message.chat.id, get_schedule_by_date(date, database[f"{call.from_user.id}"]), parse_mode="Markdown")
+        date = datetime(date.year, date.month, date.day, tzinfo=TIMEZONE)
+        bot.send_message(call.message.chat.id, get_schedule_by_date(date, database[f"{call.from_user.id}"]), parse_mode="Markdown")
 
 @bot.message_handler(commands=["start"])
-def handle_start(message):   
-    bot.send_message(message.chat.id, START_MESSAGE.format(message.from_user.username), parse_mode="Markdown", reply_markup=KEYBOARD)
+def message_start(message):
+    bot.send_message(message.chat.id, START_MESSAGE.format(message.from_user.username), reply_markup=KEYBOARD, parse_mode="Markdown")
 
 @bot.message_handler(content_types=["text"])
-def handle_text(message):
-    message_text = message.text.lower()
-    group_name = page_soup.find(id="id_group").find(string=message_text.upper())
-    if group_name:
-        database.update({f"{message.from_user.id}": group_name.parent["value"]})
+def message_any(message):
+    if message.text.upper() in GROUPS:
+        database.update({f"{message.from_user.id}": [GROUPS[message.text.upper()], message.text.upper()]})
         with open("database.txt", "w") as file:
             file.write(dumps(database))
-        bot.send_message(message.chat.id, GROUP_UPDATE_MESSAGE.format(group_name), parse_mode="Markdown")
-    elif f"{message.from_user.id}" in database:
-        if message_text in ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"]:
-            day_index = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"].index(message_text)
-            bot.send_message(message.chat.id, get_schedule_by_day(day_index, database[f"{message.from_user.id}"], 1), parse_mode="Markdown") 
-        elif message_text == "сегодня":
-            day_index = datetime.now(tz=TIMEZONE).weekday()
-            bot.send_message(message.chat.id, get_schedule_by_day(day_index, database[f"{message.from_user.id}"], 0), parse_mode="Markdown")
-        elif message_text == "завтра":
-            day_index = datetime.now(tz=TIMEZONE).weekday() + 1
-            bot.send_message(message.chat.id, get_schedule_by_day(day_index, database[f"{message.from_user.id}"], 0), parse_mode="Markdown")     
-        elif message_text == "дата":
-            date_now = datetime.now(tz=TIMEZONE)
-            inline_calendar = telebot_calendar.create_calendar(name=CALENDAR.prefix,
-                                                               year=date_now.year,
-                                                               month=date_now.month)
-            bot.send_message(message.chat.id, DATE_MESSAGE, reply_markup=inline_calendar, parse_mode="Markdown")
-        elif message_text == "экзамены":
-            bot.send_message(message.chat.id, get_exams(database[f"{message.from_user.id}"]), parse_mode="Markdown")
+        bot.send_message(message.chat.id, GROUP_UPDATE_MESSAGE.format(database[f"{message.from_user.id}"][1]), parse_mode="Markdown")
     else:
-        bot.send_message(message.chat.id, NOGROUP_MESSAGE.format(), parse_mode="Markdown")    
+        date_now = datetime.now(tz=TIMEZONE)
+        if message.text.lower() in WEEKDAYS:
+            weekday = WEEKDAYS.index(message.text.lower())
+            if date_now.weekday() >= weekday:
+                weekday += 7
+            date = date_now + timedelta(weekday - date_now.weekday())
+            bot.send_message(message.chat.id, get_schedule_by_date(date, database[f"{message.from_user.id}"]), parse_mode="Markdown")
+        elif message.text.lower() == "сегодня":
+            date = date_now + timedelta(0)
+            bot.send_message(message.chat.id, get_schedule_by_date(date, database[f"{message.from_user.id}"]), parse_mode="Markdown")
+        elif message.text.lower() == "завтра":
+            date = date_now + timedelta(1)
+            bot.send_message(message.chat.id, get_schedule_by_date(date, database[f"{message.from_user.id}"]), parse_mode="Markdown")
+        elif message.text.lower() == "дата":
+            calendar = tc.create_calendar(name=CALENDAR.prefix, year=date_now.year, month=date_now.month)
+            bot.send_message(message.chat.id, DATE_MESSAGE, reply_markup=calendar, parse_mode="Markdown")
+        elif message.text.lower() == "экзамены":
+            bot.send_message(message.chat.id, get_schedule_exams(database[f"{message.from_user.id}"]), parse_mode="Markdown")
 
-if __name__ == "__main__": 
-    bot.polling(none_stop=False, timeout=30)
+bot.polling()
