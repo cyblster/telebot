@@ -15,8 +15,7 @@ page_headers = {"Referer": URL}
 page_soup = BeautifulSoup(page.text, "lxml")
 
 
-#TOKEN = os.environ.get("TOKEN")
-TOKEN = "1475784127:AAF6iAO61ax9zYc80cTPIq08G1iwbNfIUL0"
+TOKEN = os.environ.get("TOKEN")
 TIMEZONE = timezone("Asia/Yekaterinburg")
 
 WEEKDAYS = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье")
