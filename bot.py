@@ -100,9 +100,9 @@ def get_schedule_exams(group):
         return RESULT_EXAMS_MESSAGE.format(group[1], "Экзамены", sem, NOSCHEDULE_MESSAGE)
 
     result = [el.split("\n") for el in [tr.get_text(separator = "\n") for tr in post_page_soup.tbody.find_all("tr")[1:] if "----" not in [td.get_text(separator = "\n") for td in tr.find_all("td")]]]
-    time, date, name, caf, type, prepod = list(map(list, zip(*result)))
+    times, dates, subjects, cafs, types, teachers = list(map(list, zip(*result)))
 
-    result = "".join([f"*{date[index]}\n[{type[index]}] ({time[index]}):*\n{name[index]}\n{caf[index]}\n{prepod[index]}\n\n" for index in range(len(date))])
+    result = "".join([f"*{dates[index]}\n[{types[index]}] ({times[index]}):*\n{subjects[index]}\n{cafs[index]}\n{teachers[index]}\n\n" for index in range(len(date))])
     
     return RESULT_EXAMS_MESSAGE.format(group[1], "Экзамены", sem, result)
 
