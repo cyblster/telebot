@@ -15,7 +15,8 @@ page_cookies = page.cookies
 page_headers = {"Referer": URL}
 page_soup = BeautifulSoup(page.text, "lxml")
 
-TOKEN = os.environ.get("TOKEN")
+#TOKEN = os.environ.get("TOKEN")
+TOKEN = "1475784127:AAF6iAO61ax9zYc80cTPIq08G1iwbNfIUL0"
 TIMEZONE = timezone("Asia/Yekaterinburg")
 
 WEEKDAYS = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье")
@@ -94,10 +95,9 @@ def get_schedule_exams(group_id, group_name):
     if post_page_soup.tbody == None:
         return RESULT_EXAMS_MESSAGE.format(group_name, "Экзамены", sem, NOSCHEDULE_MESSAGE)
 
-    result = [el.split("\n") for el in [tr.get_text(separator = "\n") for tr in post_page_soup.tbody.find_all("tr")[1:] if "----" not in [td.get_text(separator = "\n") for td in tr.find_all("td")]]]
-    times, dates, subjects, cafs, types, teachers = list(map(list, zip(*result)))
+    schedule = [el.split("\n") for el in [tr.get_text(separator = "\n") for tr in post_page_soup.tbody.find_all("tr")[1:] if "----" not in [td.get_text(separator = "\n") for td in tr.find_all("td")]]]
 
-    result = "".join([f"*{dates[index]}\n[{types[index]}] ({times[index]}):*\n{subjects[index]}\n{cafs[index]}\n{teachers[index]}\n\n" for index in range(len(dates))])
+    result = "\n".join([f"*{subject[1]}\n[{subject[4]}] ({subject[0]}):*\n{subject[2]}\n" + "\n".join(subject[3::2]) + "\n" for subject in schedule])
     
     return RESULT_EXAMS_MESSAGE.format(group_name, "Экзамены", sem, result)
 
