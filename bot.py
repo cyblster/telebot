@@ -1,5 +1,6 @@
 import os
 import requests
+import pymysql
 import telebot_calendar as tc
 
 from telebot import TeleBot, types
@@ -13,7 +14,6 @@ page = requests.get(URL)
 page_cookies = page.cookies
 page_headers = {"Referer": URL}
 page_soup = BeautifulSoup(page.text, "lxml")
-
 
 TOKEN = os.environ.get("TOKEN")
 TIMEZONE = timezone("Asia/Yekaterinburg")
@@ -41,16 +41,14 @@ KEYBOARD.row("Дата", "Экзамены")
 
 CALENDAR = tc.CallbackData("calendar", "action", "year", "month", "day")
 
-database = {}
-with open("database.txt", "r") as file:
-    try:
-        database = loads(file.read())
-    except:
-        pass
+HOSTNAME, USERNAME, PW, DB = os.environ.get("HOSTNAME"), os.environ.get("USERNAME"), os.environ.get("PW"), os.environ.get("DB")
+
+connection = pymysql.connect(host=HOSTNAME, user=USERNAME, password=PW, db=DB)
+database = connection.cursor()
 
 bot = TeleBot(TOKEN)
 
-def get_schedule_by_date(date, group):
+def get_schedule_by_date(date, group_id, group_name):
     week = ((date - datetime(2020, 9, 1, tzinfo=TIMEZONE) + timedelta(datetime(2020, 9, 1, tzinfo=TIMEZONE).weekday())).days) // 7 + 1
     weekday, day, month = WEEKDAYS[date.weekday()].capitalize(), date.strftime("%d"), MONTHS[date.month - 1].capitalize()
 
@@ -60,7 +58,7 @@ def get_schedule_by_date(date, group):
     page_data = {"csrfmiddlewaretoken": page_cookies["csrftoken"],
                 "faculty": "",
                 "klass": "",
-                "group": group[0],
+                "group": group_id,
                 "ScheduleType": "На дату",
                 "week": "",
                 "date": date.strftime('%d.%m.%Y'),
@@ -71,20 +69,20 @@ def get_schedule_by_date(date, group):
     post_page_soup = BeautifulSoup(post_page.text, "lxml")
 
     if post_page_soup.tbody == None:
-        return RESULT_DATE_MESSAGE.format(group[1], week, weekday, day, month, NOSCHEDULE_MESSAGE)
+        return RESULT_DATE_MESSAGE.format(group_name, week, weekday, day, month, NOSCHEDULE_MESSAGE)
 
     time = [time.get_text() for time in post_page_soup.tbody.find_all(class_="font-time")]
     subjects = ["\n".join(el[:4] + [" "] + el[4:]).strip(" ").strip("\n") for el in [el.split("\n") for el in [tr.find_all("td")[1].get_text(separator="\n") for tr in post_page_soup.tbody.find_all("tr")[1:]]]]
     
     schedule = "\n".join([f"*[{index + 1} пара] ({time[index]}):*\n{subjects[index]}\n" for index in range(len(subjects)) if subjects[index]])
     
-    return RESULT_DATE_MESSAGE.format(group[1], week, day, month, weekday, schedule)
+    return RESULT_DATE_MESSAGE.format(group_name, week, day, month, weekday, schedule)
 
-def get_schedule_exams(group):
+def get_schedule_exams(group_id, group_name):
     page_data = {"csrfmiddlewaretoken": page_cookies["csrftoken"],
                 "faculty": "",
                 "klass": "",
-                "group": group[0],
+                "group": group_id,
                 "ScheduleType": "Экзамены",
                 "week": "",
                 "date": "",
@@ -97,22 +95,26 @@ def get_schedule_exams(group):
     sem = post_page_soup.find(id="SemestrSchedule").find(value=SEM).get_text()
 
     if post_page_soup.tbody == None:
-        return RESULT_EXAMS_MESSAGE.format(group[1], "Экзамены", sem, NOSCHEDULE_MESSAGE)
+        return RESULT_EXAMS_MESSAGE.format(group_name, "Экзамены", sem, NOSCHEDULE_MESSAGE)
 
     result = [el.split("\n") for el in [tr.get_text(separator = "\n") for tr in post_page_soup.tbody.find_all("tr")[1:] if "----" not in [td.get_text(separator = "\n") for td in tr.find_all("td")]]]
     times, dates, subjects, cafs, types, teachers = list(map(list, zip(*result)))
 
     result = "".join([f"*{dates[index]}\n[{types[index]}] ({times[index]}):*\n{subjects[index]}\n{cafs[index]}\n{teachers[index]}\n\n" for index in range(len(date))])
     
-    return RESULT_EXAMS_MESSAGE.format(group[1], "Экзамены", sem, result)
+    return RESULT_EXAMS_MESSAGE.format(group_name, "Экзамены", sem, result)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(CALENDAR.prefix))
 def callback_inline(call: tc.CallbackQuery):
     name, action, year, month, day = call.data.split(CALENDAR.sep)
     date = tc.calendar_query_handler(bot=bot, call=call, name=name, action=action, year=year, month=month, day=day)
     if action == "DAY":
+        database.execute(f"SELECT * FROM `tgbot` WHERE `user_id` = {call.message.chat.id}")
+
+        user_id, user_group_id, user_group_name = database.fetchone()
         date = datetime(date.year, date.month, date.day, tzinfo=TIMEZONE)
-        bot.send_message(call.message.chat.id, get_schedule_by_date(date, database[f"{call.from_user.id}"]), parse_mode="Markdown")
+
+        bot.send_message(call.message.chat.id, get_schedule_by_date(date, user_group_id, user_group_name), parse_mode="Markdown")
 
 @bot.message_handler(commands=["start"])
 def message_start(message):
@@ -122,30 +124,37 @@ def message_start(message):
 def message_any(message):
     print(f"ID: {message.from_user.id}, USERNAME: {message.from_user.username}, FNAME: {message.from_user.first_name}, MESSAGE: {message.text}")
     if message.text.upper() in GROUPS:
-        database.update({f"{message.from_user.id}": [GROUPS[message.text.upper()], message.text.upper()]})
-        with open("database.txt", "w") as file:
-            file.write(dumps(database))
-        bot.send_message(message.chat.id, GROUP_UPDATE_MESSAGE.format(database[f"{message.from_user.id}"][1]), parse_mode="Markdown")
+        try:
+            database.execute(f"INSERT INTO `tgbot` (`user_id`, `user_group_id`, `user_group_name`) VALUES ('{message.from_user.id}', '{GROUPS[message.text.upper()]}', '{message.text.upper()}')")
+        except:
+            database.execute(f"UPDATE `tgbot` SET `user_group_id` = {GROUPS[message.text.upper()]}, `user_group_name` = '{message.text.upper()}' WHERE `user_id` = '{message.from_user.id}'")
+        database.execute(f"SELECT `user_group_name` FROM `tgbot` WHERE `user_id` = {message.from_user.id}")
+
+        bot.send_message(message.chat.id, GROUP_UPDATE_MESSAGE.format(database.fetchone()[0]), parse_mode="Markdown")
+        
+        connection.commit()
     else:
-        if f"{message.from_user.id}" in database:
+        database.execute(f"SELECT * FROM `tgbot` WHERE `user_id` = {message.from_user.id}")
+        user_id, user_group_id, user_group_name = database.fetchone()
+        if user_id:
             date_now = datetime.now(tz=TIMEZONE)
             if message.text.lower() in WEEKDAYS:
                 weekday = WEEKDAYS.index(message.text.lower())
                 if date_now.weekday() >= weekday:
                     weekday += 7
                 date = date_now + timedelta(weekday - date_now.weekday())
-                bot.send_message(message.chat.id, get_schedule_by_date(date, database[f"{message.from_user.id}"]), parse_mode="Markdown")
+                bot.send_message(message.chat.id, get_schedule_by_date(date, user_group_id, user_group_name), parse_mode="Markdown")
             elif message.text.lower() == "сегодня":
                 date = date_now + timedelta(0)
-                bot.send_message(message.chat.id, get_schedule_by_date(date, database[f"{message.from_user.id}"]), parse_mode="Markdown")
+                bot.send_message(message.chat.id, get_schedule_by_date(date, user_group_id, user_group_name), parse_mode="Markdown")
             elif message.text.lower() == "завтра":
                 date = date_now + timedelta(1)
-                bot.send_message(message.chat.id, get_schedule_by_date(date, database[f"{message.from_user.id}"]), parse_mode="Markdown")
+                bot.send_message(message.chat.id, get_schedule_by_date(date, user_group_id, user_group_name), parse_mode="Markdown")
             elif message.text.lower() == "дата":
                 calendar = tc.create_calendar(name=CALENDAR.prefix, year=date_now.year, month=date_now.month)
                 bot.send_message(message.chat.id, DATE_MESSAGE, reply_markup=calendar, parse_mode="Markdown")
             elif message.text.lower() == "экзамены":
-                bot.send_message(message.chat.id, get_schedule_exams(database[f"{message.from_user.id}"]), parse_mode="Markdown")
+                bot.send_message(message.chat.id, get_schedule_exams(user_group_id, user_group_name), parse_mode="Markdown")
         else:
             bot.send_message(message.chat.id, NOGROUP_MESSAGE, parse_mode="Markdown")
 
