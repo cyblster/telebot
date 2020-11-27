@@ -133,9 +133,12 @@ def message_any(message):
         
         connection.commit()
     else:
-        database.execute(f"SELECT * FROM `tgbot` WHERE `user_id` = {message.from_user.id}")
-        user_id, user_group_id, user_group_name = database.fetchone()
+        database.execute(f"SELECT `user_id` FROM `tgbot` WHERE `user_id` = {message.from_user.id}")
+        user_id = database.fetchone()[0]
         if user_id:
+            database.execute(f"SELECT * FROM `tgbot` WHERE `user_id` = {message.from_user.id}")
+            user_id, user_group_id, user_group_name = database.fetchone()
+
             date_now = datetime.now(tz=TIMEZONE)
             if message.text.lower() in WEEKDAYS:
                 weekday = WEEKDAYS.index(message.text.lower())
