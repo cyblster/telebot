@@ -43,6 +43,8 @@ CALENDAR = tc.CallbackData("calendar", "action", "year", "month", "day")
 
 HOSTNAME, USERNAME, PW, DB = os.environ.get("HOSTNAME"), os.environ.get("USERNAME"), os.environ.get("PW"), os.environ.get("HOSTNAME")
 
+database = ""
+
 bot = TeleBot(TOKEN)
 
 def get_schedule_by_date(date, group_id, group_name):
