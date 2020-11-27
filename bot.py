@@ -43,8 +43,6 @@ CALENDAR = tc.CallbackData("calendar", "action", "year", "month", "day")
 
 HOSTNAME, USERNAME, PW, DB = os.environ.get("HOSTNAME"), os.environ.get("USERNAME"), os.environ.get("PW"), os.environ.get("HOSTNAME")
 
-database = ""
-
 bot = TeleBot(TOKEN)
 
 def get_schedule_by_date(date, group_id, group_name):
@@ -108,12 +106,17 @@ def callback_inline(call: tc.CallbackQuery):
     name, action, year, month, day = call.data.split(CALENDAR.sep)
     date = tc.calendar_query_handler(bot=bot, call=call, name=name, action=action, year=year, month=month, day=day)
     if action == "DAY":
+        connection = pymysql.connect(host="remotemysql.com", user="ABqRdLCa2X", password="ImobS1AAqe", db="ABqRdLCa2X")
+        database = connection.cursor()
+
         database.execute(f"SELECT * FROM `tgbot` WHERE `user_id` = {call.message.chat.id}")
 
         user_id, user_group_id, user_group_name = database.fetchone()
         date = datetime(date.year, date.month, date.day, tzinfo=TIMEZONE)
 
         bot.send_message(call.message.chat.id, get_schedule_by_date(date, user_group_id, user_group_name), parse_mode="Markdown")
+
+        connection.close()
 
 @bot.message_handler(commands=["start"])
 def message_start(message):
