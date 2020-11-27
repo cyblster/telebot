@@ -41,10 +41,7 @@ KEYBOARD.row("Дата", "Экзамены")
 
 CALENDAR = tc.CallbackData("calendar", "action", "year", "month", "day")
 
-HOSTNAME, USERNAME, PW, DB = os.environ.get("HOSTNAME"), os.environ.get("USERNAME"), os.environ.get("PW"), os.environ.get("DB")
-
-connection = pymysql.connect(host=HOSTNAME, user=USERNAME, password=PW, db=DB)
-database = connection.cursor()
+HOSTNAME, USERNAME, PW, DB = os.environ.get("HOSTNAME"), os.environ.get("USERNAME"), os.environ.get("PW"), os.environ.get("HOSTNAME")
 
 bot = TeleBot(TOKEN)
 
@@ -123,6 +120,8 @@ def message_start(message):
 @bot.message_handler(content_types=["text"])
 def message_any(message):
     print(f"ID: {message.from_user.id}, USERNAME: {message.from_user.username}, FNAME: {message.from_user.first_name}, MESSAGE: {message.text}")
+    connection = pymysql.connect(host="remotemysql.com", user="ABqRdLCa2X", password="ImobS1AAqe", db="ABqRdLCa2X")
+    database = connection.cursor()
     if message.text.upper() in GROUPS:
         try:
             database.execute(f"INSERT INTO `tgbot` (`user_id`, `user_group_id`, `user_group_name`) VALUES ('{message.from_user.id}', '{GROUPS[message.text.upper()]}', '{message.text.upper()}')")
@@ -157,5 +156,7 @@ def message_any(message):
                 bot.send_message(message.chat.id, get_schedule_exams(user_group_id, user_group_name), parse_mode="Markdown")
         else:
             bot.send_message(message.chat.id, NOGROUP_MESSAGE, parse_mode="Markdown")
+    
+    connection.close()
 
 bot.polling()
