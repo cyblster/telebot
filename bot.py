@@ -15,7 +15,7 @@ page_cookies = page.cookies
 page_headers = {"Referer": URL}
 page_soup = BeautifulSoup(page.text, "lxml")
 
-TOKEN = os.environ.get("TOKEN")
+TOKEN, HOSTNAME, USERNAME, PW = os.environ.get("TOKEN"), os.environ.get("HOSTNAME"), os.environ.get("USERNAME"), os.environ.get("PW")
 TIMEZONE = timezone("Asia/Yekaterinburg")
 
 WEEKDAYS = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье")
@@ -40,8 +40,6 @@ KEYBOARD.row("Четверг", "Пятница", "Суббота")
 KEYBOARD.row("Дата", "Экзамены")
 
 CALENDAR = tc.CallbackData("calendar", "action", "year", "month", "day")
-
-HOSTNAME, USERNAME, PW, DB = os.environ.get("HOSTNAME"), os.environ.get("USERNAME"), os.environ.get("PW"), os.environ.get("HOSTNAME")
 
 bot = TeleBot(TOKEN)
 
@@ -105,7 +103,7 @@ def callback_inline(call: tc.CallbackQuery):
     name, action, year, month, day = call.data.split(CALENDAR.sep)
     date = tc.calendar_query_handler(bot=bot, call=call, name=name, action=action, year=year, month=month, day=day)
     if action == "DAY":
-        connection = pymysql.connect(host="remotemysql.com", user="ABqRdLCa2X", password="ImobS1AAqe", db="ABqRdLCa2X")
+        connection = pymysql.connect(host=HOSTNAME, user=USERNAME, password=PW, db=USERNAME)
         database = connection.cursor()
 
         database.execute(f"SELECT * FROM `tgbot` WHERE `user_id` = {call.message.chat.id}")
@@ -124,7 +122,7 @@ def message_start(message):
 @bot.message_handler(content_types=["text"])
 def message_any(message):
     print(f"ID: {message.from_user.id}, USERNAME: {message.from_user.username}, FNAME: {message.from_user.first_name}, MESSAGE: {message.text}")
-    connection = pymysql.connect(host="remotemysql.com", user="ABqRdLCa2X", password="ImobS1AAqe", db="ABqRdLCa2X")
+    connection = pymysql.connect(host=HOSTNAME, user=USERNAME, password=PW, db=USERNAME)
     database = connection.cursor()
     if message.text.upper() in GROUPS:
         try:
