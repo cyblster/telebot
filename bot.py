@@ -64,7 +64,7 @@ def get_schedule_by_date(date, group_id, group_name):
     post_page_soup = BeautifulSoup(post_page.text, "lxml")
 
     if post_page_soup.tbody == None:
-        return RESULT_DATE_MESSAGE.format(group_name, week, weekday, day, month, NOSCHEDULE_MESSAGE)
+        return RESULT_DATE_MESSAGE.format(group_name, week, day, month, weekday, NOSCHEDULE_MESSAGE)
 
     time = [time.get_text() for time in post_page_soup.tbody.find_all(class_="font-time")]
     subjects = ["\n".join(el[:4] + [" "] + el[4:]).strip(" ").strip("\n") for el in [el.split("\n") for el in [tr.find_all("td")[1].get_text(separator="\n") for tr in post_page_soup.tbody.find_all("tr")[1:]]]]
