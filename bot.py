@@ -45,7 +45,7 @@ bot = TeleBot(TOKEN)
 
 def get_schedule_by_date(date, group_id, group_name):
     week = ((date - datetime(2020, 9, 1, tzinfo=TIMEZONE) + timedelta(datetime(2020, 9, 1, tzinfo=TIMEZONE).weekday())).days) // 7 + 1
-    weekday, day, month = WEEKDAYS[date.weekday()].capitalize(), date.strftime("%d"), MONTHS[date.month - 1].capitalize()
+    weekday, day, month = WEEKDAYS[date.weekday()].capitalize(), date.strftime("%-d"), MONTHS[date.month - 1].capitalize()
 
     if  week > 20 or week < -1:
         return OUTDATE_MESSAGE
