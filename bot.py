@@ -16,6 +16,7 @@ page_headers = {"Referer": URL}
 page_soup = BeautifulSoup(page.text, "lxml")
 
 TOKEN, HOSTNAME, USERNAME, PW = os.environ.get("TOKEN"), os.environ.get("HOSTNAME"), os.environ.get("USERNAME"), os.environ.get("PW")
+
 TIMEZONE = timezone("Asia/Yekaterinburg")
 
 WEEKDAYS = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье")
@@ -45,10 +46,7 @@ bot = TeleBot(TOKEN)
 
 def get_schedule_by_date(date, group_id, group_name):
     week = ((date - datetime(2020, 9, 1, tzinfo=TIMEZONE) + timedelta(datetime(2020, 9, 1, tzinfo=TIMEZONE).weekday())).days) // 7 + 1
-    weekday, day, month = WEEKDAYS[date.weekday()].capitalize(), date.strftime("%-d"), MONTHS[date.month - 1].capitalize()
-
-    if  week > 20 or week < -1:
-        return OUTDATE_MESSAGE
+    weekday, day, month = WEEKDAYS[date.weekday()].capitalize(), date.strftime("%#d"), MONTHS[date.month - 1].capitalize()
 
     page_data = {"csrfmiddlewaretoken": page_cookies["csrftoken"],
                 "faculty": "",
